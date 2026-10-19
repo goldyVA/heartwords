@@ -117,11 +117,6 @@ footer .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 
   <footer>
     <div>For grown-ups: the 17 starter words come first. When each one is spelled right on the first try, the bonus words start mixing in.</div>
-    <div class="row voicerow">
-      <label for="voicePick">Voice:</label>
-      <select id="voicePick"></select>
-      <button class="link" id="testVoice" type="button">Try it</button>
-    </div>
     <div class="row">
       <button class="link" id="unlock" type="button">Turn on bonus words now</button>
       <button class="link" id="reset" type="button">Start over</button>
@@ -252,19 +247,9 @@ function voiceScore(v){
 function loadVoices(){
   if(!("speechSynthesis" in window)) return;
   englishVoices = speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang)&&voiceScore(v)>-50).sort((a,b)=>voiceScore(b)-voiceScore(a));
-  let savedName=null; try{ savedName=localStorage.getItem("heartwords-voice"); }catch(e){}
-  voice = englishVoices.find(v=>v.name===savedName) || englishVoices[0] || null;
-  const sel=$("voicePick");
-  sel.innerHTML = englishVoices.map(v=>`<option value="${v.name.replace(/"/g,"&quot;")}">${v.name}${voiceScore(v)>=30?" ★":""}</option>`).join("");
-  if(voice) sel.value=voice.name;
+  voice = englishVoices.find(v=>v.name==="Google US English") || englishVoices[0] || null;
 }
-if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; } else { $("noVoice").hidden=false; $("voicePick").closest(".row").hidden=true; }
-$("voicePick").addEventListener("change",e=>{
-  voice = englishVoices.find(v=>v.name===e.target.value)||voice;
-  try{ localStorage.setItem("heartwords-voice",voice.name); }catch(err){}
-  say(["Hi! Let's spell some heart words."]);
-});
-$("testVoice").addEventListener("click",()=>say(["Hi! Let's spell some heart words."]));
+if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; } else { $("noVoice").hidden=false; }
 function say(parts){
   if(!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
