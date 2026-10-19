@@ -22,8 +22,9 @@
   color-scheme:light;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{min-height:100%}
-body{background:var(--sky);color:var(--ink);font-family:var(--primer);font-size:18px;
+body{margin:0;background:var(--sky);color:var(--ink);font-family:var(--primer);font-size:18px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px;
   background-image:radial-gradient(circle at 12% 18%,#fff8 0 40px,transparent 41px),radial-gradient(circle at 88% 10%,#fff8 0 56px,transparent 57px);}
 .wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
