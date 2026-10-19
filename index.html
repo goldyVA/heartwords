@@ -281,6 +281,7 @@ function hint(){
   const show=Math.min(w.length-1,hintsUsed);
   $("note").textContent=`It starts with “${w.slice(0,show)}” and has ${w.length} letters.`;
   answer.value=w.slice(0,show); answer.focus();
+  $("hint").hidden=true; // one letter per miss: the button comes back after the next wrong try
   say([w]);
 }
 let current=null, misses=0, recent=[], retryQueue=[], solved=false;
@@ -404,16 +405,12 @@ function check(e){
     misses++; S.streak=0;
     fb.className="feedback bad"; fb.textContent="✘ Not quite. Try again!";
     $("form").classList.remove("shake"); void $("form").offsetWidth; $("form").classList.add("shake");
-    if(misses===1){
-      $("note").textContent = `You wrote “${guess}”. Listen one more time.`;
-      say(["Not quite. Try again.", current.w]);
-    } else {
-      $("note").textContent = `Here is how to spell “${current.w}”. Look at the heart parts, then type it yourself.`;
-      showTiles(current.w);
-      say(["Here is how to spell it.", current.w.split("").join(", "), current.w]);
-      if(!retryQueue.some(r=>r.w===current.w)) retryQueue.push({w:current.w,wait:3});
-    }
-    $("hint").hidden=false;
+    $("note").textContent = `You wrote “${guess}”. Listen one more time.`;
+    say(["Not quite. Try again.", current.w]);
+    // words missed twice come back a few turns later for more practice
+    if(misses>=2 && !retryQueue.some(r=>r.w===current.w)) retryQueue.push({w:current.w,wait:3});
+    // one more hint letter per miss, never the whole word
+    $("hint").hidden = hintsUsed >= current.w.length-1;
     answer.value=""; answer.focus();
     save(); renderHearts();
   }
