@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Heart Word Speller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Grandstander:wght@600;800&display=swap">
+<style>
+/* Layout: one centered "workbook page" card on a sky field; the answer line is primary handwriting paper. Single bright theme by choice. */
+:root{
+  --sky:#d9eef0; --paper:#fffdf7; --ink:#2b2a3a; --muted:#6b6880;
+  --line:#9ec3d6; --midline:#e7a3a3;
+  --green:#7a9e2a; --green-bg:#dfe9b9;
+  --orange:#e07800; --orange-bg:#fed99a;
+  --red:#ef4a2f; --red-bg:#f9b4a8;
+  --gray:#979797; --gray-bg:#dcdcdc;
+  --purple:#6d2f9e; --purple-soft:#efe4f7;
+  --display:"Grandstander","Comic Sans MS","Trebuchet MS",sans-serif;
+  --primer:"Andika","Century Gothic","Avenir",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--sky);color:var(--ink);font-family:var(--primer);font-size:18px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px;
+  background-image:radial-gradient(circle at 12% 18%,#fff8 0 40px,transparent 41px),radial-gradient(circle at 88% 10%,#fff8 0 56px,transparent 57px);}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,6vw,38px);margin:0;color:var(--purple);letter-spacing:.5px;text-wrap:balance}
+h1 span{color:var(--red)}
+.level{font-family:var(--display);font-weight:600;font-size:15px;background:var(--paper);border:3px solid var(--purple);color:var(--purple);padding:6px 14px;border-radius:999px}
+.level.bonus{background:var(--purple);color:#fff}
+.hearts{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.hearts svg{width:24px;height:24px}
+.hearts .lbl{font-size:14px;color:var(--muted);margin-right:6px}
+.card{background:var(--paper);border-radius:28px;box-shadow:0 6px 0 #b6d5d9;padding:24px clamp(16px,4vw,36px) 28px;display:flex;flex-direction:column;align-items:center;gap:18px;position:relative;overflow:hidden}
+.listen{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+button{font-family:var(--display);font-weight:600;cursor:pointer;border:none;border-radius:18px;font-size:20px;padding:14px 22px;display:inline-flex;align-items:center;gap:10px;transition:transform .1s}
+button:active{transform:translateY(3px)}
+button:focus-visible,input:focus-visible{outline:4px solid var(--orange);outline-offset:3px}
+.big{background:var(--purple);color:#fff;box-shadow:0 5px 0 #4a1f6c;font-size:24px;padding:18px 28px}
+.soft{background:var(--purple-soft);color:var(--purple);box-shadow:0 4px 0 #d3bfe3}
+.go{background:var(--green);color:#fff;box-shadow:0 5px 0 #557018;font-size:24px}
+.prompt{font-size:20px;color:var(--muted);margin:0;text-align:center}
+.paper{width:100%;max-width:520px;position:relative;height:120px;border-radius:12px;
+  background:
+   linear-gradient(var(--line),var(--line)) 0 18px/100% 3px no-repeat,
+   repeating-linear-gradient(90deg,var(--midline) 0 14px,transparent 14px 26px) 0 58px/100% 3px no-repeat,
+   linear-gradient(var(--line),var(--line)) 0 98px/100% 3px no-repeat,
+   #fff;border:2px solid #e3eef3}
+#answer{position:absolute;inset:0;width:100%;height:100%;border:none;background:transparent;font-family:var(--primer);font-size:72px;line-height:1;text-align:center;color:var(--ink);padding:4px 10px 18px;letter-spacing:4px}
+#answer:focus{outline:none}
+.paper:focus-within{border-color:var(--orange)}
+.actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.feedback{min-height:64px;font-family:var(--display);font-weight:800;font-size:clamp(24px,5vw,32px);text-align:center;margin:0;display:flex;align-items:center;justify-content:center;gap:10px}
+.feedback.good{color:var(--green)} .feedback.bad{color:var(--red)}
+.note{font-size:18px;text-align:center;color:var(--ink);margin:-8px 0 0;max-width:46ch}
+.tiles{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding-bottom:20px}
+.tile{position:relative;font-family:var(--primer);font-size:56px;line-height:1;padding:10px 8px 22px;min-width:46px;text-align:center}
+.tile.g{background:var(--green-bg)} .tile.o{background:var(--orange-bg)} .tile.r{background:var(--red-bg)} .tile.s{background:var(--gray-bg)}
+.tile .mark{position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);width:34px;height:34px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:center;font-size:14px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend svg{width:18px;height:18px}
+.score{display:flex;gap:18px;justify-content:center;font-family:var(--display);font-weight:600;color:var(--muted);font-size:16px;font-variant-numeric:tabular-nums}
+.score b{color:var(--ink)}
+footer{display:flex;flex-direction:column;gap:10px;align-items:center;font-size:14px;color:var(--muted)}
+footer .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.link{background:none;box-shadow:none;color:var(--purple);font-size:15px;padding:6px 10px;text-decoration:underline}
+.banner{background:var(--purple);color:#fff;border-radius:20px;padding:16px 20px;text-align:center;font-family:var(--display);font-size:22px;font-weight:800}
+.banner small{display:block;font-family:var(--primer);font-weight:400;font-size:17px;margin-top:4px}
+.spark{position:absolute;font-size:28px;pointer-events:none;animation:pop 1s ease-out forwards}
+@keyframes pop{from{opacity:1;transform:translate(0,0) scale(.6)}to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.2)}}
+.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+.voicerow{align-items:center}
+#voicePick{font-family:var(--primer);font-size:15px;padding:6px 8px;border-radius:10px;border:2px solid var(--purple-soft);background:var(--paper);color:var(--ink);max-width:100%}
+.warn{background:#fff3d6;border:2px solid var(--orange);border-radius:14px;padding:10px 14px;font-size:15px;text-align:center}
+@media (prefers-reduced-motion:reduce){.spark,.shake{animation:none}.spark{display:none}button{transition:none}}
+@media (max-width:480px){#answer{font-size:56px}.tile{font-size:40px;min-width:34px}.big{font-size:20px;padding:14px 20px}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Heart <span>♥</span> Word Speller</h1>
+    <div class="level" id="level">Starter words</div>
+  </header>
+
+  <div class="hearts" id="hearts" aria-label="Starter words learned"></div>
+  <div id="bannerSlot"></div>
+
+  <main class="card" id="card">
+    <div class="listen">
+      <button class="big" id="hear" type="button" aria-label="Hear the word">🔊 Hear the word</button>
+      <button class="soft" id="hearSentence" type="button">💬 Use it in a sentence</button>
+    </div>
+    <p class="prompt" id="prompt">Tap the purple button, then spell the word you hear.</p>
+
+    <form id="form" class="paper" autocomplete="off">
+      <label for="answer" style="position:absolute;left:-9999px">Type the word</label>
+      <input id="answer" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" maxlength="14">
+    </form>
+
+    <div class="actions">
+      <button class="go" id="check" type="submit" form="form">✓ Check</button>
+    </div>
+
+    <p class="feedback" id="feedback" aria-live="polite"></p>
+    <p class="note" id="note"></p>
+    <div class="tiles" id="tiles" hidden></div>
+    <div class="legend" id="legend" hidden></div>
+    <button class="go" id="next" type="button" hidden>Next word ➜</button>
+  </main>
+
+  <div class="score"><span>Right: <b id="right">0</b></span><span>In a row: <b id="streak">0</b></span><span>Bonus words: <b id="bonusCount">0</b></span></div>
+
+  <div class="warn" id="noVoice" hidden>This browser can't read words out loud. Try Chrome, Safari or Edge.</div>
+
+  <footer>
+    <div>For grown-ups: the 17 starter words come first. When each one is spelled right on the first try, the bonus words start mixing in.</div>
+    <div class="row">
+      <button class="link" id="unlock" type="button">Turn on bonus words now</button>
+      <button class="link" id="reset" type="button">Start over</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+// [word, segments (letters:type, type g=decodable o=temporarily nondecodable r=nondecodable s=silent), sentence]
+const STARTER = [
+ ["of","o:r f:r","I want a glass of milk."],
+ ["you","y:g ou:o","I like you."],
+ ["was","w:g a:r s:g","The dog was wet."],
+ ["or","or:o","Do you want red or blue?"],
+ ["for","f:g or:o","This gift is for you."],
+ ["put","p:g u:o t:g","Put your shoes on."],
+ ["push","p:g u:o sh:g","Push the door open."],
+ ["my","m:g y:o","This is my hat."],
+ ["by","b:g y:o","Sit by me."],
+ ["why","wh:g y:o","Why is the sky blue?"],
+ ["walk","w:g al:r k:g","We walk to school."],
+ ["talk","t:g al:r k:g","Let's talk about it."],
+ ["into","i:g n:g t:g o:r","The frog jumped into the pond."],
+ ["wash","w:g a:o sh:g","Wash your hands."],
+ ["want","w:g a:o n:g t:g","I want a snack."],
+ ["what","wh:g a:r t:g","What is your name?"],
+ ["who","w:s h:g o:r","Who is at the door?"]
+];
+const BONUS = [
+ ["some","s:g o:r m:g e:s","Can I have some juice?"],
+ ["come","c:g o:r m:g e:s","Come play with me."],
+ ["done","d:g o:r n:g e:s","I am done with my work."],
+ ["none","n:g o:r n:g e:s","There are none left."],
+ ["our","ou:o r:g","This is our class."],
+ ["out","ou:o t:g","The cat ran out."],
+ ["about","a:o b:g ou:o t:g","This book is about bugs."],
+ ["small","s:g m:g a:g ll:g","The ant is small."],
+ ["among","a:o m:g o:r ng:g","The bird hid among the leaves."],
+ ["almost","a:o l:g m:g o:g s:g t:g","It is almost time for lunch."],
+ ["have","h:g a:g v:g e:s","I have a red ball."],
+ ["give","g:g i:g v:g e:s","Give the dog a bone."],
+ ["live","l:g i:g v:g e:s","I live in a blue house."],
+ ["could","c:g oul:r d:g","Could you help me?"],
+ ["would","w:g oul:r d:g","Would you like a cookie?"],
+ ["should","sh:g oul:r d:g","You should go to bed."],
+ ["there","th:g ere:r","Put the box over there."],
+ ["where","wh:g ere:r","Where is my shoe?"],
+ ["one","o:r n:g e:s","I have one sister."],
+ ["once","o:r n:g c:g e:s","Once upon a time, there was a king."],
+ ["love","l:g o:r v:g e:s","I love my family."],
+ ["above","a:o b:g o:r v:g e:s","The bird flew above the tree."],
+ ["women","w:g o:r m:g e:o n:g","The women sang a song."],
+ ["woman","w:g o:r m:g a:o n:g","The woman read a book."],
+ ["they","th:g ey:o","They went to the park."],
+ ["does","d:g o:r es:r","Does the fish swim?"],
+ ["friend","f:g r:g ie:r n:g d:g","She is my best friend."],
+ ["been","b:g ee:r n:g","I have been to the zoo."],
+ ["great","g:g r:g ea:r t:g","You did a great job."],
+ ["break","b:g r:g ea:r k:g","Don't break the cup."],
+ ["again","a:o g:g ai:r n:g","Let's play again."],
+ ["against","a:o g:g ai:r n:g s:g t:g","The bike leaned against the wall."],
+ ["today","t:g o:r d:g ay:g","Today is a sunny day."],
+ ["away","a:o w:g ay:g","The bird flew away."],
+ ["always","a:o l:g w:g ay:g s:g","I always brush my teeth."],
+ ["also","a:o l:g s:g o:g","I also like apples."],
+ ["know","kn:o ow:g","I know the answer."],
+ ["knew","kn:o ew:o","She knew the way home."],
+ ["work","w:g or:o k:g","Dad goes to work."],
+ ["word","w:g or:o d:g","Spell the word."],
+ ["world","w:g or:o l:g d:g","The world is big."],
+ ["your","y:g our:o","Is this your coat?"],
+ ["four","f:g our:o","A dog has four legs."],
+ ["fourth","f:g our:o th:g","I am fourth in line."],
+ ["pear","p:g ear:o","I ate a green pear."],
+ ["wear","w:g ear:o","I wear a coat when it's cold."],
+ ["tear","t:g ear:o","Don't tear the paper."],
+ ["bear","b:g ear:o","The bear ate honey."],
+ ["door","d:g oor:r","Close the door."],
+ ["poor","p:g oor:r","The poor kitten was wet."],
+ ["floor","f:g l:g oor:r","My toys are on the floor."],
+ ["buy","b:g uy:r","Let's buy some bread."],
+ ["build","b:g ui:r l:g d:g","We build a fort."],
+ ["father","f:g a:o th:g er:g","My father cooks dinner."],
+ ["other","o:r th:g er:g","Where is my other sock?"],
+ ["mother","m:g o:r th:g er:g","My mother reads to me."],
+ ["brother","b:g r:g o:r th:g er:g","My brother is tall."],
+ ["fought","f:g ough:o t:g","The cats fought over the toy."],
+ ["bought","b:g ough:o t:g","Mom bought new shoes."],
+ ["brought","b:g r:g ough:o t:g","I brought my lunch."],
+ ["thought","th:g ough:o t:g","I thought about my dog."],
+ ["cousin","c:g ou:r s:g i:g n:g","My cousin came to visit."],
+ ["young","y:g ou:r ng:g","The puppy is young."],
+ ["touch","t:g ou:r ch:g","Don't touch the hot pan."]
+];
+const ALL = [...STARTER.map(w=>({w:w[0],seg:w[1],s:w[2],bonus:false})),...BONUS.map(w=>({w:w[0],seg:w[1],s:w[2],bonus:true}))];
+const byWord = Object.fromEntries(ALL.map(x=>[x.w,x]));
+
+const HEART = c=>`<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 29 C5 21 1 15 1 9.5 A7.5 7.5 0 0 1 16 6 A7.5 7.5 0 0 1 31 9.5 C31 15 27 21 16 29Z" fill="${c}" stroke="#fff" stroke-width="2.5"/></svg>`;
+const DOT = c=>`<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="${c}" stroke="#fff" stroke-width="2.5"/></svg>`;
+const COL = {g:"#7a9e2a",o:"#e07800",r:"#ef4a2f",s:"#979797"};
+const mark = t=> t==="g" ? DOT(COL.g) : HEART(COL[t]);
+
+// ---------- state ----------
+const fresh = ()=>({mastered:{},right:0,streak:0,bonusOn:false,bonusSeen:{},announced:false});
+let S = fresh();
+try{ const saved = JSON.parse(localStorage.getItem("heartwords")||"null"); if(saved) S = Object.assign(fresh(),saved); }catch(e){}
+const save = ()=>{ try{ localStorage.setItem("heartwords",JSON.stringify(S)); }catch(e){} };
+
+let current=null, misses=0, recent=[], retryQueue=[], solved=false;
+
+const $ = id=>document.getElementById(id);
+const answer=$("answer");
+
+// ---------- speech ----------
+let voice=null, englishVoices=[];
+// Higher score = more natural-sounding. Neural/"Natural", "Premium"/"Enhanced" and Google voices sound far less robotic.
+function voiceScore(v){
+  const n=v.name; let s=0;
+  if(/Natural|Neural/i.test(n)) s+=50;
+  if(/Premium/i.test(n)) s+=45;
+  if(/Enhanced/i.test(n)) s+=40;
+  if(/Google/i.test(n)) s+=30;
+  if(/Ava|Jenny|Aria|Ana|Michelle|Samantha|Allison|Susan|Zoe|Evan|Nathan/i.test(n)) s+=10;
+  if(/^en[-_]US/i.test(v.lang)) s+=8;
+  if(/Fred|Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Wobble|Whisper|Zarvox|Trinoids|Jester|Organ|Superstar|Ralph|Junior|Kathy|Good News|Hysterical/i.test(n)) s-=100;
+  return s;
+}
+function loadVoices(){
+  if(!("speechSynthesis" in window)) return;
+  englishVoices = speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang)&&voiceScore(v)>-50).sort((a,b)=>voiceScore(b)-voiceScore(a));
+  voice = englishVoices.find(v=>v.name==="Google US English") || englishVoices[0] || null;
+}
+if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; } else { $("noVoice").hidden=false; }
+function say(parts){
+  if(!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  parts.forEach(p=>{ const u=new SpeechSynthesisUtterance(p); if(voice){u.voice=voice;u.lang=voice.lang;} else u.lang="en-US"; u.rate=.9; u.pitch=1; speechSynthesis.speak(u); });
+}
+const sayWord = ()=> current && say([current.w]);
+const saySentence = ()=> current && say([current.w, current.s, current.w]);
+
+// ---------- word picking ----------
+const starterDone = ()=> STARTER.every(w=>S.mastered[w[0]]);
+function pool(){
+  if(!S.bonusOn) return STARTER.map(w=>w[0]);
+  // after unlock: mostly bonus words, some starter review
+  return Math.random()<.7 ? BONUS.map(w=>w[0]) : STARTER.map(w=>w[0]);
+}
+function nextWord(){
+  // missed words come back after a few turns
+  const due = retryQueue.findIndex(r=>r.wait<=0);
+  retryQueue.forEach(r=>r.wait--);
+  if(due>-1){ return retryQueue.splice(due,1)[0].w; }
+  let list = pool().filter(w=>!recent.includes(w));
+  const fresh = list.filter(w=>!S.mastered[w]);
+  if(fresh.length && Math.random()<.8) list=fresh;
+  return list[Math.floor(Math.random()*list.length)];
+}
+
+// ---------- render ----------
+function renderHearts(){
+  const n = STARTER.filter(w=>S.mastered[w[0]]).length;
+  $("hearts").innerHTML = `<span class="lbl">Starter words: ${n} of ${STARTER.length}</span>` +
+    STARTER.map(w=>S.mastered[w[0]]?HEART(COL.r):HEART("#e9dcef")).join("");
+  $("level").textContent = S.bonusOn ? "★ Bonus words on" : "Starter words";
+  $("level").classList.toggle("bonus",S.bonusOn);
+  $("right").textContent=S.right; $("streak").textContent=S.streak;
+  $("bonusCount").textContent = BONUS.filter(w=>S.mastered[w[0]]).length;
+  $("unlock").hidden = S.bonusOn;
+}
+function showTiles(word){
+  const segs = byWord[word].seg.split(" ").map(p=>p.split(":"));
+  $("tiles").innerHTML = segs.map(([l,t])=>`<div class="tile ${t}">${l}<span class="mark">${mark(t)}</span></div>`).join("");
+  $("tiles").hidden=false;
+  const used = new Set(segs.map(s=>s[1]));
+  const names={g:"sounds like it looks",o:"tricky for now",r:"heart part, learn by heart",s:"silent"};
+  $("legend").innerHTML = ["g","o","r","s"].filter(t=>used.has(t)).map(t=>`<span>${mark(t)}${names[t]}</span>`).join("");
+  $("legend").hidden=false;
+}
+function newRound(){
+  current = byWord[nextWord()];
+  recent.push(current.w); if(recent.length>4) recent.shift();
+  misses=0; solved=false;
+  answer.value=""; answer.disabled=false;
+  $("feedback").textContent=""; $("feedback").className="feedback";
+  $("note").textContent="";
+  $("tiles").hidden=true; $("legend").hidden=true; $("next").hidden=true;
+  $("check").hidden=false;
+  $("prompt").textContent = current.bonus ? "★ Bonus word! Listen and spell it." : "Listen, then spell the word you hear.";
+  answer.focus({preventScroll:true});
+  setTimeout(sayWord,250);
+}
+function sparkle(){
+  const card=$("card"); const r=card.getBoundingClientRect();
+  for(let i=0;i<14;i++){
+    const s=document.createElement("span"); s.className="spark";
+    s.textContent=["⭐","❤️","✨","🌟"][i%4];
+    s.style.left=(r.width/2-14)+"px"; s.style.top="45%";
+    const a=Math.random()*Math.PI*2, d=120+Math.random()*120;
+    s.style.setProperty("--dx",Math.cos(a)*d+"px"); s.style.setProperty("--dy",Math.sin(a)*d+"px");
+    card.appendChild(s); setTimeout(()=>s.remove(),1000);
+  }
+}
+const CHEERS=["Yes! You got it!","Super speller!","Correct! Great job!","You did it!","Awesome spelling!","Right on!"];
+
+function check(e){
+  if(e) e.preventDefault();
+  if(!current) return;
+  if(solved){ newRound(); return; }
+  const guess = answer.value.trim().toLowerCase();
+  if(!guess){ answer.focus(); return; }
+  const fb=$("feedback");
+  if(guess===current.w){
+    solved=true;
+    const firstTry = misses===0;
+    fb.className="feedback good"; fb.textContent = "✔ "+CHEERS[Math.floor(Math.random()*CHEERS.length)];
+    $("note").textContent = firstTry ? "" : "Nice fixing it!";
+    S.right++;
+    if(firstTry){ S.streak++; S.mastered[current.w]=true; } else { S.streak=0; }
+    showTiles(current.w);
+    sparkle(); say([firstTry?"Correct!":"Yes, you fixed it!"]);
+    answer.disabled=true;
+    $("check").hidden=true; $("next").hidden=false; $("next").focus();
+    if(!S.bonusOn && starterDone()){ S.bonusOn=true; unlockBanner(); }
+    save(); renderHearts();
+  } else {
+    misses++; S.streak=0;
+    fb.className="feedback bad"; fb.textContent="✘ Not quite. Try again!";
+    $("form").classList.remove("shake"); void $("form").offsetWidth; $("form").classList.add("shake");
+    if(misses===1){
+      $("note").textContent = `You wrote “${guess}”. Listen one more time.`;
+      say(["Not quite. Try again.", current.w]);
+    } else {
+      $("note").textContent = `Here is how to spell “${current.w}”. Look at the heart parts, then type it yourself.`;
+      showTiles(current.w);
+      say(["Here is how to spell it.", current.w.split("").join(", "), current.w]);
+      if(!retryQueue.some(r=>r.w===current.w)) retryQueue.push({w:current.w,wait:3});
+    }
+    answer.value=""; answer.focus();
+    save(); renderHearts();
+  }
+}
+function unlockBanner(){
+  $("bannerSlot").innerHTML = `<div class="banner">🎉 You learned all ${STARTER.length} starter words!<small>Bonus words are mixed in now. You've got this!</small></div>`;
+  say(["Wow! You learned all the starter words! Now here come some bonus words."]);
+}
+
+$("form").addEventListener("submit",check);
+$("hear").addEventListener("click",()=>{ sayWord(); answer.focus({preventScroll:true}); });
+$("hearSentence").addEventListener("click",()=>{ saySentence(); answer.focus({preventScroll:true}); });
+$("next").addEventListener("click",newRound);
+$("unlock").addEventListener("click",()=>{ S.bonusOn=true; save(); renderHearts(); unlockBanner(); });
+$("reset").addEventListener("click",()=>{
+  if($("reset").dataset.armed){ S=fresh(); save(); retryQueue=[]; recent=[]; $("bannerSlot").innerHTML=""; $("reset").textContent="Start over"; delete $("reset").dataset.armed; renderHearts(); newRound(); }
+  else { $("reset").dataset.armed="1"; $("reset").textContent="Tap again to erase progress"; setTimeout(()=>{ $("reset").textContent="Start over"; delete $("reset").dataset.armed; },4000); }
+});
+answer.addEventListener("input",()=>{ answer.value=answer.value.replace(/[^a-zA-Z]/g,""); });
+
+// first word is picked but not spoken until a tap (browsers block sound before a tap)
+renderHearts();
+current = byWord[nextWord()]; recent.push(current.w);
+</script>
+</body>
+</html>
