@@ -80,6 +80,7 @@ footer .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .voicerow{align-items:center}
 #voicePick{font-family:var(--primer);font-size:15px;padding:6px 8px;border-radius:10px;border:2px solid var(--purple-soft);background:var(--paper);color:var(--ink);max-width:100%}
 .confirm{align-items:center;background:var(--paper);border:2px solid var(--red);border-radius:14px;padding:8px 12px;color:var(--ink)}
+#timerPw{font-family:var(--primer);font-size:16px;padding:6px 10px;border-radius:10px;border:2px solid var(--purple-soft);background:#fff;color:var(--ink);width:7em}
 .link.danger{color:var(--red);font-weight:800}
 .badges{display:flex;gap:8px;flex-wrap:wrap}
 .timer{border-color:var(--green);color:var(--green);font-variant-numeric:tabular-nums}
@@ -147,7 +148,15 @@ body.locked .wrap{filter:grayscale(1);opacity:.45}
     <div class="row">
       <button class="link" id="unlock" type="button">Turn on bonus words now</button>
       <button class="link" id="reset" type="button">Start over</button>
+      <button class="link" id="timerReset" type="button">Start timer over</button>
     </div>
+    <form class="row confirm" id="timerRow" hidden autocomplete="off">
+      <label for="timerPw">Password:</label>
+      <input id="timerPw" type="password" inputmode="numeric" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="link danger" type="submit" id="timerGo">Reset to 10 min</button>
+      <button class="link" id="timerCancel" type="button">Cancel</button>
+      <span class="pwerr" id="timerMsg" aria-live="polite"></span>
+    </form>
     <div class="row confirm" id="confirmRow" hidden>
       <span>Erase all progress and start at 0?</span>
       <button class="link danger" id="resetYes" type="button">Yes, start over</button>
@@ -425,7 +434,7 @@ $("hear").addEventListener("click",()=>{ if(!locked && T.start===null){ T.start=
 $("hearSentence").addEventListener("click",()=>{ saySentence(); answer.focus({preventScroll:true}); });
 $("next").addEventListener("click",newRound);
 $("hint").addEventListener("click",hint);
-$("unlock").addEventListener("click",()=>{ S.bonusOn=true; save(); renderHearts(); unlockBanner(); });
+$("unlock").addEventListener("click",()=>askPassword("bonus","Turn on bonus words"));
 $("reset").addEventListener("click",()=>{ $("confirmRow").hidden=false; $("resetYes").focus(); });
 $("resetNo").addEventListener("click",()=>{ $("confirmRow").hidden=true; });
 $("resetYes").addEventListener("click",()=>{
@@ -483,6 +492,22 @@ $("pwForm").addEventListener("submit",e=>{
   e.preventDefault();
   if(passwordOk($("pw").value)){ T={start:null,used:0}; saveT(); setLock(false); tick(); }
   else { $("pwErr").textContent="That's not the password. Try again."; $("pw").value=""; $("pw").focus(); }
+});
+// grown-up actions that need the password: "timer" or "bonus"
+let pendingAction=null;
+function askPassword(action,label){
+  pendingAction=action; $("timerGo").textContent=label;
+  $("timerRow").hidden=false; $("timerMsg").textContent=""; $("timerPw").value=""; $("timerPw").focus();
+}
+$("timerReset").addEventListener("click",()=>askPassword("timer","Reset to 10 min"));
+$("timerCancel").addEventListener("click",()=>{ $("timerRow").hidden=true; pendingAction=null; });
+$("timerRow").addEventListener("submit",e=>{
+  e.preventDefault();
+  if(passwordOk($("timerPw").value)){
+    if(pendingAction==="timer"){ T={start:null,used:0}; saveT(); tick(); $("timer").textContent="⏱ 10 min left"; }
+    if(pendingAction==="bonus"){ S.bonusOn=true; save(); renderHearts(); unlockBanner(); }
+    $("timerRow").hidden=true; pendingAction=null;
+  } else { $("timerMsg").textContent="Wrong password."; $("timerPw").value=""; $("timerPw").focus(); }
 });
 document.addEventListener("visibilitychange",saveT);
 tick(); setInterval(tick,1000);
