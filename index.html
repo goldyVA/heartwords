@@ -80,6 +80,20 @@ footer .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 #voicePick{font-family:var(--primer);font-size:15px;padding:6px 8px;border-radius:10px;border:2px solid var(--purple-soft);background:var(--paper);color:var(--ink);max-width:100%}
 .confirm{align-items:center;background:var(--paper);border:2px solid var(--red);border-radius:14px;padding:8px 12px;color:var(--ink)}
 .link.danger{color:var(--red);font-weight:800}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.timer{border-color:var(--green);color:var(--green);font-variant-numeric:tabular-nums}
+.timer.low{border-color:var(--red);color:var(--red)}
+body.locked .wrap{filter:grayscale(1);opacity:.45}
+.lock{position:fixed;inset:0;z-index:50;background:rgba(43,42,58,.45);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.lockcard{background:var(--paper);border-radius:28px;box-shadow:0 6px 0 #b6d5d9;padding:28px 24px;max-width:440px;width:100%;text-align:center;display:flex;flex-direction:column;gap:10px}
+.lockcard h2{font-family:var(--display);font-weight:800;color:var(--purple);font-size:32px;margin:0}
+.lockcard p{margin:0}
+.moon{font-size:56px;line-height:1}
+.pwform{display:flex;flex-direction:column;gap:8px;margin-top:12px;border-top:2px dashed var(--purple-soft);padding-top:16px}
+.pwform label{font-size:15px;color:var(--muted)}
+.pwrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#pw{font-family:var(--primer);font-size:20px;padding:10px 14px;border-radius:14px;border:2px solid var(--purple-soft);background:#fff;color:var(--ink);min-width:0;flex:1 1 160px}
+.pwerr{color:var(--red);font-weight:700;min-height:1.2em}
 .warn{background:#fff3d6;border:2px solid var(--orange);border-radius:14px;padding:10px 14px;font-size:15px;text-align:center}
 @media (prefers-reduced-motion:reduce){.spark,.shake{animation:none}.spark{display:none}button{transition:none}}
 @media (max-width:480px){#answer{font-size:56px}.tile{font-size:40px;min-width:34px}.big{font-size:20px;padding:14px 20px}}
@@ -90,7 +104,10 @@ footer .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 <div class="wrap">
   <header>
     <h1>Heart <span>♥</span> Word Speller</h1>
-    <div class="level" id="level">Starter words</div>
+    <div class="badges">
+      <div class="level timer" id="timer" aria-live="polite">⏱ 10 min left</div>
+      <div class="level" id="level">Starter words</div>
+    </div>
   </header>
 
   <div class="hearts" id="hearts" aria-label="Starter words learned"></div>
@@ -136,6 +153,22 @@ footer .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
       <button class="link" id="resetNo" type="button">Cancel</button>
     </div>
   </footer>
+</div>
+
+<div class="lock" id="lock" hidden>
+  <div class="lockcard" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
+    <div class="moon" aria-hidden="true">🌙</div>
+    <h2 id="lockTitle">Time for a break!</h2>
+    <p id="lockMsg">Great work today. You can play again soon.</p>
+    <form id="pwForm" class="pwform" autocomplete="off">
+      <label for="pw">Grown-ups: type the password to keep playing</label>
+      <div class="pwrow">
+        <input id="pw" type="password" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <button class="go" type="submit">Unlock</button>
+      </div>
+      <p class="pwerr" id="pwErr" aria-live="polite"></p>
+    </form>
+  </div>
 </div>
 
 <script>
@@ -390,7 +423,7 @@ function unlockBanner(){
 }
 
 $("form").addEventListener("submit",check);
-$("hear").addEventListener("click",()=>{ sayWord(); answer.focus({preventScroll:true}); });
+$("hear").addEventListener("click",()=>{ if(!locked && T.start===null){ T.start=nowS(); saveT(); } sayWord(); answer.focus({preventScroll:true}); });
 $("hearSentence").addEventListener("click",()=>{ saySentence(); answer.focus({preventScroll:true}); });
 $("next").addEventListener("click",newRound);
 $("hint").addEventListener("click",hint);
@@ -404,6 +437,50 @@ $("resetYes").addEventListener("click",()=>{
   window.scrollTo({top:0,behavior:"smooth"});
 });
 answer.addEventListener("input",()=>{ answer.value=answer.value.replace(/[^a-zA-Z]/g,""); });
+
+// ---------- play-time limit: 10 minutes of play, then locked until an hour after that play period began ----------
+const LIMIT=10*60, WINDOW=60*60, PASSWORD="start";
+let T={start:null,used:0};
+try{ const t=JSON.parse(localStorage.getItem("heartwords-time")||"null"); if(t) T=Object.assign(T,t); }catch(e){}
+const saveT=()=>{ try{ localStorage.setItem("heartwords-time",JSON.stringify(T)); }catch(e){} };
+let locked=false, tickCount=0;
+const nowS=()=>Math.floor(Date.now()/1000);
+function setLock(on){
+  if(on===locked) return;
+  locked=on;
+  document.body.classList.toggle("locked",on);
+  document.querySelector(".wrap").inert=on;
+  $("lock").hidden=!on;
+  if(on){ try{speechSynthesis.cancel();}catch(e){} $("pw").value=""; $("pwErr").textContent=""; }
+  else { answer.focus({preventScroll:true}); }
+}
+function tick(){
+  const now=nowS();
+  // a new hour starts once the last play period is an hour old
+  if(T.start!==null && now>=T.start+WINDOW){ T={start:null,used:0}; saveT(); }
+  if(T.used>=LIMIT){
+    const mins=Math.max(1,Math.ceil((T.start+WINDOW-now)/60));
+    $("lockMsg").textContent=`Great work! You can play again in ${mins} minute${mins===1?"":"s"}.`;
+    setLock(true);
+  } else {
+    setLock(false);
+    // the clock only runs after the first "Hear the word" tap
+    if(T.start!==null && document.visibilityState==="visible"){
+      T.used++;
+      if(++tickCount%5===0 || T.used>=LIMIT) saveT();
+    }
+  }
+  const left=Math.max(0,Math.ceil((LIMIT-T.used)/60));
+  $("timer").textContent=`⏱ ${left} min left`;
+  $("timer").classList.toggle("low",left<=2);
+}
+$("pwForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  if($("pw").value.trim().toLowerCase()===PASSWORD){ T={start:null,used:0}; saveT(); setLock(false); tick(); }
+  else { $("pwErr").textContent="That's not the password. Try again."; $("pw").value=""; $("pw").focus(); }
+});
+document.addEventListener("visibilitychange",saveT);
+tick(); setInterval(tick,1000);
 
 // first word is picked but not spoken until a tap (browsers block sound before a tap)
 renderHearts();
