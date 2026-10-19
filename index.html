@@ -228,8 +228,9 @@ const mark = t=> t==="g" ? DOT(COL.g) : HEART(COL[t]);
 // ---------- state ----------
 const fresh = ()=>({mastered:{},right:0,streak:0,bonusOn:false,bonusSeen:{},announced:false});
 let S = fresh();
-try{ const saved = JSON.parse(localStorage.getItem("heartwords")||"null"); if(saved) S = Object.assign(fresh(),saved); }catch(e){}
-const save = ()=>{ try{ localStorage.setItem("heartwords",JSON.stringify(S)); }catch(e){} };
+// Every visit starts fresh: nothing is saved between page loads.
+try{ localStorage.removeItem("heartwords"); }catch(e){}
+const save = ()=>{};
 
 let current=null, misses=0, recent=[], retryQueue=[], solved=false;
 
