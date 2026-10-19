@@ -78,6 +78,8 @@ footer .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 @keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
 .voicerow{align-items:center}
 #voicePick{font-family:var(--primer);font-size:15px;padding:6px 8px;border-radius:10px;border:2px solid var(--purple-soft);background:var(--paper);color:var(--ink);max-width:100%}
+.confirm{align-items:center;background:var(--paper);border:2px solid var(--red);border-radius:14px;padding:8px 12px;color:var(--ink)}
+.link.danger{color:var(--red);font-weight:800}
 .warn{background:#fff3d6;border:2px solid var(--orange);border-radius:14px;padding:10px 14px;font-size:15px;text-align:center}
 @media (prefers-reduced-motion:reduce){.spark,.shake{animation:none}.spark{display:none}button{transition:none}}
 @media (max-width:480px){#answer{font-size:56px}.tile{font-size:40px;min-width:34px}.big{font-size:20px;padding:14px 20px}}
@@ -108,6 +110,7 @@ footer .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 
     <div class="actions">
       <button class="go" id="check" type="submit" form="form">✓ Check</button>
+      <button class="soft" id="hint" type="button" hidden>💡 Hint</button>
     </div>
 
     <p class="feedback" id="feedback" aria-live="polite"></p>
@@ -126,6 +129,11 @@ footer .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
     <div class="row">
       <button class="link" id="unlock" type="button">Turn on bonus words now</button>
       <button class="link" id="reset" type="button">Start over</button>
+    </div>
+    <div class="row confirm" id="confirmRow" hidden>
+      <span>Erase all progress and start at 0?</span>
+      <button class="link danger" id="resetYes" type="button">Yes, start over</button>
+      <button class="link" id="resetNo" type="button">Cancel</button>
     </div>
   </footer>
 </div>
@@ -228,10 +236,19 @@ const mark = t=> t==="g" ? DOT(COL.g) : HEART(COL[t]);
 // ---------- state ----------
 const fresh = ()=>({mastered:{},right:0,streak:0,bonusOn:false,bonusSeen:{},announced:false});
 let S = fresh();
-// Every visit starts fresh: nothing is saved between page loads.
-try{ localStorage.removeItem("heartwords"); }catch(e){}
-const save = ()=>{};
+try{ const saved = JSON.parse(localStorage.getItem("heartwords")||"null"); if(saved) S = Object.assign(fresh(),saved); }catch(e){}
+const save = ()=>{ try{ localStorage.setItem("heartwords",JSON.stringify(S)); }catch(e){} };
 
+let hintsUsed=0;
+function hint(){
+  if(!current||solved) return;
+  const w=current.w;
+  hintsUsed++;
+  const show=Math.min(w.length-1,hintsUsed);
+  $("note").textContent=`It starts with “${w.slice(0,show)}” and has ${w.length} letters.`;
+  answer.value=w.slice(0,show); answer.focus();
+  say([w]);
+}
 let current=null, misses=0, recent=[], retryQueue=[], solved=false;
 
 const $ = id=>document.getElementById(id);
@@ -310,7 +327,7 @@ function newRound(){
   answer.value=""; answer.disabled=false;
   $("feedback").textContent=""; $("feedback").className="feedback";
   $("note").textContent="";
-  $("tiles").hidden=true; $("legend").hidden=true; $("next").hidden=true;
+  $("tiles").hidden=true; $("legend").hidden=true; $("next").hidden=true; $("hint").hidden=true; hintsUsed=0;
   $("check").hidden=false;
   $("prompt").textContent = current.bonus ? "★ Bonus word! Listen and spell it." : "Listen, then spell the word you hear.";
   answer.focus({preventScroll:true});
@@ -346,7 +363,7 @@ function check(e){
     showTiles(current.w);
     sparkle(); say([firstTry?"Correct!":"Yes, you fixed it!"]);
     answer.disabled=true;
-    $("check").hidden=true; $("next").hidden=false; $("next").focus();
+    $("check").hidden=true; $("hint").hidden=true; $("next").hidden=false; $("next").focus();
     if(!S.bonusOn && starterDone()){ S.bonusOn=true; unlockBanner(); }
     save(); renderHearts();
   } else {
@@ -362,6 +379,7 @@ function check(e){
       say(["Here is how to spell it.", current.w.split("").join(", "), current.w]);
       if(!retryQueue.some(r=>r.w===current.w)) retryQueue.push({w:current.w,wait:3});
     }
+    $("hint").hidden=false;
     answer.value=""; answer.focus();
     save(); renderHearts();
   }
@@ -375,10 +393,15 @@ $("form").addEventListener("submit",check);
 $("hear").addEventListener("click",()=>{ sayWord(); answer.focus({preventScroll:true}); });
 $("hearSentence").addEventListener("click",()=>{ saySentence(); answer.focus({preventScroll:true}); });
 $("next").addEventListener("click",newRound);
+$("hint").addEventListener("click",hint);
 $("unlock").addEventListener("click",()=>{ S.bonusOn=true; save(); renderHearts(); unlockBanner(); });
-$("reset").addEventListener("click",()=>{
-  if($("reset").dataset.armed){ S=fresh(); save(); retryQueue=[]; recent=[]; $("bannerSlot").innerHTML=""; $("reset").textContent="Start over"; delete $("reset").dataset.armed; renderHearts(); newRound(); }
-  else { $("reset").dataset.armed="1"; $("reset").textContent="Tap again to erase progress"; setTimeout(()=>{ $("reset").textContent="Start over"; delete $("reset").dataset.armed; },4000); }
+$("reset").addEventListener("click",()=>{ $("confirmRow").hidden=false; $("resetYes").focus(); });
+$("resetNo").addEventListener("click",()=>{ $("confirmRow").hidden=true; });
+$("resetYes").addEventListener("click",()=>{
+  S=fresh(); save(); retryQueue=[]; recent=[];
+  $("bannerSlot").innerHTML=""; $("confirmRow").hidden=true;
+  renderHearts(); newRound();
+  window.scrollTo({top:0,behavior:"smooth"});
 });
 answer.addEventListener("input",()=>{ answer.value=answer.value.replace(/[^a-zA-Z]/g,""); });
 
