@@ -318,11 +318,27 @@ function loadVoices(){
   voice = englishVoices.find(v=>v.name==="Google US English") || englishVoices[0] || null;
 }
 if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; } else { $("noVoice").hidden=false; }
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
 function say(parts){
   if(!("speechSynthesis" in window)) return;
-  speechSynthesis.cancel();
-  parts.forEach(p=>{ const u=new SpeechSynthesisUtterance(p); if(voice){u.voice=voice;u.lang=voice.lang;} else u.lang="en-US"; u.rate=.9; u.pitch=1; speechSynthesis.speak(u); });
+  const ss=speechSynthesis;
+  // iOS Safari drops speech that follows cancel() too closely, and can get stuck paused
+  const wasBusy = ss.speaking || ss.pending;
+  if(wasBusy) ss.cancel();
+  if(ss.paused) ss.resume();
+  const go=()=>parts.forEach(p=>{
+    const u=new SpeechSynthesisUtterance(p);
+    u.lang="en-US";
+    // on iOS, a chosen voice that isn't fully downloaded plays silence, so let the system pick
+    if(voice && !isIOS){ u.voice=voice; u.lang=voice.lang; }
+    u.rate=.9; u.pitch=1; u.volume=1;
+    ss.speak(u);
+  });
+  // after a cancel, wait a moment so iOS doesn't swallow the new speech
+  // (speech was already playing, so it's already allowed without a fresh tap)
+  if(wasBusy) setTimeout(go,150); else go();
 }
+
 const sayWord = ()=> current && say([current.w]);
 const saySentence = ()=> current && say([current.w, current.s, current.w]);
 
@@ -430,7 +446,8 @@ function unlockBanner(){
 }
 
 $("form").addEventListener("submit",check);
-$("hear").addEventListener("click",()=>{ if(!locked && T.start===null){ T.start=nowS(); saveT(); } sayWord(); answer.focus({preventScroll:true}); });
+// speak first, right inside the tap: iOS only allows speech that starts from a tap
+$("hear").addEventListener("click",()=>{ sayWord(); if(!locked && T.start===null){ T.start=nowS(); saveT(); } answer.focus({preventScroll:true}); });
 $("hearSentence").addEventListener("click",()=>{ saySentence(); answer.focus({preventScroll:true}); });
 $("next").addEventListener("click",newRound);
 $("hint").addEventListener("click",hint);
