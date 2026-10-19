@@ -163,7 +163,7 @@ body.locked .wrap{filter:grayscale(1);opacity:.45}
     <form id="pwForm" class="pwform" autocomplete="off">
       <label for="pw">Grown-ups: type the password to keep playing</label>
       <div class="pwrow">
-        <input id="pw" type="password" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <input id="pw" type="password" inputmode="numeric" autocapitalize="off" autocorrect="off" spellcheck="false">
         <button class="go" type="submit">Unlock</button>
       </div>
       <p class="pwerr" id="pwErr" aria-live="polite"></p>
@@ -439,7 +439,14 @@ $("resetYes").addEventListener("click",()=>{
 answer.addEventListener("input",()=>{ answer.value=answer.value.replace(/[^a-zA-Z]/g,""); });
 
 // ---------- play-time limit: 10 minutes of play, then locked until an hour after that play period began ----------
-const LIMIT=10*60, WINDOW=60*60, PASSWORD="start";
+const LIMIT=10*60, WINDOW=60*60;
+// Password = the device's current time, 12-hour, no colon or leading zero (12:24 -> "1224", 9:05 -> "905").
+// The previous minute also works, in case the clock ticks over while typing.
+function timeCode(d){ const h=d.getHours()%12||12; return `${h}${String(d.getMinutes()).padStart(2,"0")}`; }
+function passwordOk(v){
+  const typed=v.replace(/\D/g,""); const now=new Date();
+  return typed===timeCode(now) || typed===timeCode(new Date(now.getTime()-60000));
+}
 let T={start:null,used:0};
 try{ const t=JSON.parse(localStorage.getItem("heartwords-time")||"null"); if(t) T=Object.assign(T,t); }catch(e){}
 const saveT=()=>{ try{ localStorage.setItem("heartwords-time",JSON.stringify(T)); }catch(e){} };
@@ -476,7 +483,7 @@ function tick(){
 }
 $("pwForm").addEventListener("submit",e=>{
   e.preventDefault();
-  if($("pw").value.trim().toLowerCase()===PASSWORD){ T={start:null,used:0}; saveT(); setLock(false); tick(); }
+  if(passwordOk($("pw").value)){ T={start:null,used:0}; saveT(); setLock(false); tick(); }
   else { $("pwErr").textContent="That's not the password. Try again."; $("pw").value=""; $("pw").focus(); }
 });
 document.addEventListener("visibilitychange",saveT);
